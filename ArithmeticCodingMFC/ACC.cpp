@@ -1,10 +1,12 @@
 
+#include "stdafx.h"
+#include "ArithmeticCodingMFC.h"
+#include "ArithmeticCodingMFCDlg.h"
+#include "afxdialogex.h"
+#include "ACC.h"
 #include<cstdio>
 #include<stdlib.h>
 #include<windows.h>
-
-#include "stdafx.h"
-#include "ACC.h"
 using namespace::std;
 
 /* TRANSLATION TABLES BETWEEN CHARACTERS AND SYMBOL INDEXES. */
@@ -243,7 +245,7 @@ char decode_symbol(int cum_freq[])
 	return symbol;
 }
 
-BYTE DecodeRS[1000];
+BYTE DecodeRS[Max_code_length];
 
 void decode() {
 	int i = 0;
@@ -265,11 +267,20 @@ void decode() {
 }
 
 void encode(BYTE * source, int size) {
+	HWND hWnd = ::FindWindow(NULL, _T("算术压缩工具"));      //得到对话框的句柄
+	CDialog* pWnd = (CDialog*)CDialog::FromHandle(hWnd); 
+	auto pMWnd = dynamic_cast<CArithmeticCodingMFCDlg *>(pWnd);//由句柄得到对话框的对象指针
+	 
 	initACC();
+	pMWnd->ShowStatusMsg("初始化完成");
+	CString msg;
+
 	scanFreq(source, size);
+	pMWnd->ShowStatusMsg("词频统计完成");
 	start_model();                             /* Set up other modules.     */
 	start_outputing_bits();
 	start_encoding();
+	pMWnd->ShowStatusMsg("编码中...");
 	for (int i = 0; i < size; i++) {
 		BYTE b = *(source + i);
 		encode_symbol(char_to_index[(b & 0x0f)], cum_freq);
@@ -279,4 +290,5 @@ void encode(BYTE * source, int size) {
 	encode_symbol(EOF_symbol, cum_freq);
 	done_encoding();                           /* Send the last few bits.   */
 	done_outputing_bits();
+	pMWnd->ShowStatusMsg("算术编码完成");
 }

@@ -23,5 +23,5 @@ typedef long code_value;                /* Type of an arithmetic code value */
 extern void encode(BYTE * source, int size);
 extern void decode();
 extern char code[Max_code_length];
-extern BYTE DecodeRS[1000];
+extern BYTE DecodeRS[Max_code_length];
 extern  int code_index;

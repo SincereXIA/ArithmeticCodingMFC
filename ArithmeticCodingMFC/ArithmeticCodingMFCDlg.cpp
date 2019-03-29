@@ -57,6 +57,7 @@ END_MESSAGE_MAP()
 CArithmeticCodingMFCDlg::CArithmeticCodingMFCDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_ARITHMETICCODINGMFC_DIALOG, pParent)
 	, strinput(_T(""))
+	, m_Status_Info(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -65,6 +66,7 @@ void CArithmeticCodingMFCDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Text(pDX, IDC_STRInput, strinput);
+	DDX_Text(pDX, IDC_Status_Info, m_Status_Info);
 }
 
 BEGIN_MESSAGE_MAP(CArithmeticCodingMFCDlg, CDialogEx)
@@ -185,6 +187,7 @@ void CArithmeticCodingMFCDlg::OnBnClickedencodebutton()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	UpdateData(TRUE);
+	
 	CString text;
 	GetDlgItemText(IDC_STRInput, text);
 	int strLength = text.GetLength()+1;
@@ -206,6 +209,11 @@ void CArithmeticCodingMFCDlg::OnBnClickeddecodeButton()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	decode();
+	ShowStatusMsg("解码完成！");
 	CString res = CString((char *)DecodeRS);
 	SetDlgItemText(IDC_STRoutput, res);
+}
+
+void CArithmeticCodingMFCDlg::ShowStatusMsg(CString msg) {
+	SetDlgItemText(IDC_Status_Info, msg);
 }

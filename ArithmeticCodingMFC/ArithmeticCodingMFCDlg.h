@@ -36,4 +36,6 @@ public:
 	CString strinput;
 	afx_msg void OnBnClickedencodebutton();
 	afx_msg void OnBnClickeddecodeButton();
+	void ShowStatusMsg(CString msg);
+	CString m_Status_Info;
 };
