@@ -38,4 +38,9 @@ public:
 	afx_msg void OnBnClickeddecodeButton();
 	void ShowStatusMsg(CString msg);
 	CString m_Status_Info;
+	afx_msg void OnBnClickedButtonInputfile();
+	CString inputFilePath;
+	CString outputFilePath;
+	afx_msg void OnBnClickedButtonCompress();
+	afx_msg void OnBnClickedButton2();
 };

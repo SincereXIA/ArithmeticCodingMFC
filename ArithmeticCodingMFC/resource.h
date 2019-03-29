@@ -11,8 +11,12 @@
 #define IDC_encode_button               1003
 #define IDC_STRoutput                   1004
 #define IDC_decode_BUTTON               1006
-#define IDC_EDIT1                       1007
 #define IDC_Status_Info                 1008
+#define IDC_EDIT_InputFile              1009
+#define IDC_BUTTON_InputFile            1010
+#define IDC_EDIT_OutputFile             1011
+#define IDC_BUTTON2                     1012
+#define IDC_BUTTON_Compress             1013
 
 // Next default values for new objects
 // 
@@ -20,7 +24,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        130
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1009
+#define _APS_NEXT_CONTROL_VALUE         1014
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

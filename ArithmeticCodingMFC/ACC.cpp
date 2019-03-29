@@ -14,7 +14,7 @@ int char_to_index[No_of_chars];         /* To index from character          */
 unsigned char index_to_char[No_of_symbols + 1]; /* To character from index    */
 
 /*   2^14 - 1           +            */
-int cum_freq[No_of_symbols + 1];          /* Cumulative symbol frequencies    */
+long cum_freq[No_of_symbols + 1];          /* Cumulative symbol frequencies    */
 
 //用来存储编码值，是编码解码过程的桥梁。大小暂定１００，实际中可以修改
 char code[Max_code_length];
@@ -63,7 +63,11 @@ void start_model() {
 		cum_freq[i - 1] = cum_freq[i] + freq[i];
 	}
 	//这条语句是为了确保频率和的上线，这是后话，这里就注释掉
-	//if (cum_freq[0] > Max_frequency);   /* Check counts within limit*/
+	while (cum_freq[0] > Max_frequency) {
+		for (int i = 0; i < No_of_chars; i++) {
+			cum_freq[i] /= 10;
+		}
+	}
 
 }
 
@@ -103,10 +107,10 @@ void start_encoding()
 	bits_to_follow = 0;                 /* No bits to follow           */
 }
 
-void encode_symbol(int symbol, int cum_freq[])
+void encode_symbol(int symbol, long cum_freq[])
 {
-	long range;                 /* Size of the current code region          */
-	range = (long)(high - low) + 1;
+	long long range;                 /* Size of the current code region          */
+	range = (long long)(high - low) + 1;
 
 	high = low + (range*cum_freq[symbol - 1]) / cum_freq[0] - 1;  /* Narrow the code region  to that allotted to this */
 	low = low + (range*cum_freq[symbol]) / cum_freq[0]; /* symbol.                  */
@@ -211,7 +215,7 @@ void start_decoding()
 }
 
 
-char decode_symbol(int cum_freq[])
+char decode_symbol(long cum_freq[])
 {
 	long range;                 /* Size of current code region              */
 	int cum;                    /* Cumulative frequency calculated          */

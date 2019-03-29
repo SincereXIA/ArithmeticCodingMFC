@@ -11,10 +11,13 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <fstream>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+char fileBuffer[100000];
 
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
@@ -60,6 +63,8 @@ CArithmeticCodingMFCDlg::CArithmeticCodingMFCDlg(CWnd* pParent /*=nullptr*/)
 	, m_Status_Info(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	inputFilePath = _T("");
+	outputFilePath = _T("");
 }
 
 void CArithmeticCodingMFCDlg::DoDataExchange(CDataExchange* pDX)
@@ -75,6 +80,9 @@ BEGIN_MESSAGE_MAP(CArithmeticCodingMFCDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_encode_button, &CArithmeticCodingMFCDlg::OnBnClickedencodebutton)
 	ON_BN_CLICKED(IDC_decode_BUTTON, &CArithmeticCodingMFCDlg::OnBnClickeddecodeButton)
+	ON_BN_CLICKED(IDC_BUTTON_InputFile, &CArithmeticCodingMFCDlg::OnBnClickedButtonInputfile)
+	ON_BN_CLICKED(IDC_BUTTON_Compress, &CArithmeticCodingMFCDlg::OnBnClickedButtonCompress)
+	ON_BN_CLICKED(IDC_BUTTON2, &CArithmeticCodingMFCDlg::OnBnClickedButton2)
 END_MESSAGE_MAP()
 
 
@@ -170,6 +178,7 @@ CString byte_to_hex(const char* str, int len) //transfer string to hex-string
 	std::string result = "";
 	std::string tmp;
 	std::stringstream ss;
+	len = len > 10000 ? 10000 : len;
 	for (int i = 0; i <len; i++)
 	{
 		ss << std::setfill('0')<< std::setw(2) << std::hex << (unsigned int)(unsigned char)str[i] << std::endl;
@@ -216,4 +225,65 @@ void CArithmeticCodingMFCDlg::OnBnClickeddecodeButton()
 
 void CArithmeticCodingMFCDlg::ShowStatusMsg(CString msg) {
 	SetDlgItemText(IDC_Status_Info, msg);
+}
+
+
+void CArithmeticCodingMFCDlg::OnBnClickedButtonInputfile()
+{
+	BOOL isOpen = TRUE;		//是否打开(否则为保存)
+	CString defaultDir = "";	//默认打开的文件路径
+	CString fileName = "";			//默认打开的文件名
+	CString filter = "";	//文件过虑的类型
+	CFileDialog openFileDlg(isOpen, defaultDir, fileName, OFN_HIDEREADONLY | OFN_READONLY, filter, NULL);
+	openFileDlg.GetOFN().lpstrInitialDir = "E:\\FileTest\\test.doc";
+	INT_PTR result = openFileDlg.DoModal();
+	CString filePath = defaultDir;
+	if (result == IDOK) {
+		filePath = openFileDlg.GetPathName();
+	}
+	inputFilePath = filePath;
+	SetDlgItemText(IDC_EDIT_InputFile, filePath);
+}
+
+
+void CArithmeticCodingMFCDlg::OnBnClickedButtonCompress()
+{
+	UpdateData(TRUE);
+	if (inputFilePath == "") return;
+	char * buffer;
+	std::ifstream inputfile(inputFilePath, std::ios::binary|std::ios::ate);
+	long size = inputfile.tellg();
+	inputfile.seekg(0, std::ios::beg);
+	buffer = new char[size];
+	inputfile.read(buffer, size);
+	encode((BYTE *)buffer, size);
+	CString show_code = byte_to_hex(code, code_index);
+	SetDlgItemText(IDC_STRoutput, show_code);
+
+	if (outputFilePath == "") return;
+	std::ofstream outputfile(outputFilePath, std::ios::binary);
+	outputfile.write(code, code_index);
+	outputfile.close();
+	CString msg;
+	msg.Format(_T("原始长度：%d\n编码长度：%d"), size, code_index);
+	AfxMessageBox(msg);
+}
+
+
+void CArithmeticCodingMFCDlg::OnBnClickedButton2()
+{
+	BOOL isOpen = FALSE;		//是否打开(否则为保存)
+	CString defaultDir = inputFilePath;	//默认打开的文件路径
+	CString fileName = "";			//默认打开的文件名
+	CString filter = "";	//文件过虑的类型
+	CFileDialog openFileDlg(isOpen, defaultDir, fileName, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, filter, NULL);
+	openFileDlg.GetOFN().lpstrInitialDir = "E:\\FileTest\\test.doc";
+	INT_PTR result = openFileDlg.DoModal();
+	CString filePath = defaultDir + "\\" + fileName;
+	if (result == IDOK) {
+		filePath = openFileDlg.GetPathName();
+	}
+	CWnd::SetDlgItemText(IDC_EDIT_OutputFile, filePath);
+	outputFilePath = filePath;
+
 }
