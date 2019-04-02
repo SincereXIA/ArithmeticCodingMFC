@@ -10,22 +10,22 @@
 using namespace::std;
 
 /* TRANSLATION TABLES BETWEEN CHARACTERS AND SYMBOL INDEXES. */
-int char_to_index[No_of_chars];         /* To index from character          */
-unsigned char index_to_char[No_of_symbols + 1]; /* To character from index    */
+int char_to_index[No_of_chars];        
+unsigned char index_to_char[No_of_symbols + 1]; 
 
 /*   2^14 - 1           +            */
-long cum_freq[No_of_symbols + 1];          /* Cumulative symbol frequencies    */
+long cum_freq[No_of_symbols + 1];        
 
-//用来存储编码值，是编码解码过程的桥梁。大小暂定１００，实际中可以修改
+//用来存储编码值，
 char code[Max_code_length];
-int code_index = 0;
+long code_index = 0;
 int decode_index = 0;
 
-//buffer为八位缓冲区，暂时存放编码制
+//buffer暂时存放编码
 static int buffer;
 //buffer中还有几个比特没有用到，初始值为8
 static int bits_to_go;
-//超过了EOF的字符，也是垃圾
+//超过了EOF的字符
 static int garbage_bits;
 int freq[No_of_symbols + 1];
 
@@ -50,19 +50,21 @@ void scanFreq(BYTE * source, long long length) {
 void start_model() {
 
 	int i;
+	for (int i = 0; i < No_of_symbols; i++) {
+		cum_freq[i] = 0;
+	}
 	for (i = 0; i < No_of_chars; i++) {
-		//为了便于查找
 		char_to_index[i] = i + 1;
 		index_to_char[i + 1] = i;
 	}
 
 	//累计频率cum_freq[i-1]=freq[i]+...+freq[257], cum_freq[257]=0;
+	freq[EOF_symbol] = 1;
 	cum_freq[No_of_symbols] = 0;
 
 	for (i = No_of_symbols; i > 0; i--) {
 		cum_freq[i - 1] = cum_freq[i] + freq[i];
 	}
-	//这条语句是为了确保频率和的上线，这是后话，这里就注释掉
 	while (cum_freq[0] > Max_frequency) {
 		for (int i = 0; i < No_of_chars; i++) {
 			cum_freq[i] /= 10;
@@ -80,11 +82,11 @@ void start_outputing_bits()
 
 void output_bit(int bit)
 {
-	//为了写代码方便，编码数据是从右到左进入缓冲区的。记住这一点！
+	//编码数据是从左到右进入缓冲区
 	buffer >>= 1;
 	if (bit) buffer |= 0x80;
 	bits_to_go -= 1;
-	//当缓冲区满了的时候，就输出存起来
+	//缓冲区满
 	if (bits_to_go == 0) {
 		code[code_index] = buffer;
 		code_index++;
@@ -93,46 +95,46 @@ void output_bit(int bit)
 	}
 }
 
-static void bit_plus_follow(int);   /* Routine that follows                    */
-static code_value low, high;    /* Ends of the current code region          */
-static long bits_to_follow;     /* Number of opposite bits to output after */
+static void bit_plus_follow(int);                
+static code_value low, high;             
+static long bits_to_follow;    
 
 
 void start_encoding()
 {
 	for (int i = 0; i < 100; i++)code[i] = '\0';
 
-	low = 0;                            /* Full code range.                 */
+	low = 0;                           
 	high = Top_value;
-	bits_to_follow = 0;                 /* No bits to follow           */
+	bits_to_follow = 0;             
 }
 
 void encode_symbol(int symbol, long cum_freq[])
 {
-	long long range;                 /* Size of the current code region          */
+	long long range;                          
 	range = (long long)(high - low) + 1;
 
-	high = low + (range*cum_freq[symbol - 1]) / cum_freq[0] - 1;  /* Narrow the code region  to that allotted to this */
-	low = low + (range*cum_freq[symbol]) / cum_freq[0]; /* symbol.                  */
+	high = low + (range*cum_freq[symbol - 1]) / cum_freq[0] - 1;  
+	low = low + (range*cum_freq[symbol]) / cum_freq[0]; 
 
 	for (;;)
-	{                                  /* Loop to output bits.     */
+	{                                  
 		if (high < Half) {
-			bit_plus_follow(0);                 /* Output 0 if in low half. */
+			bit_plus_follow(0);                 /* 上下界都在低区间. */
 		}
-		else if (low >= Half) {                   /* Output 1 if in high half.*/
+		else if (low >= Half) {                   /* 上下界都在高区间.*/
 			bit_plus_follow(1);
 			low -= Half;
-			high -= Half;                       /* Subtract offset to top. */
+			high -= Half;                       
 		}
-		else if (low >= First_qtr && high < Third_qtr) {  /* Output an opposite bit　later if in middle half. */
+		else if (low >= First_qtr && high < Third_qtr) {  /* 如果在中间，稍后输出相反位 */
 			bits_to_follow += 1;
-			low -= First_qtr;                   /* Subtract offset to middle*/
+			low -= First_qtr;                 
 			high -= First_qtr;
 		}
-		else break;                             /* Otherwise exit loop.     */
+		else break;                             /* 区间长度超过 1/2 退出     */
 		low = 2 * low;
-		high = 2 * high + 1;                        /* Scale up code range.     */
+		high = 2 * high + 1;                        /*放缩区间  */
 	}
 }
 
@@ -155,11 +157,11 @@ void done_outputing_bits()
 
 static void bit_plus_follow(int bit)
 {
-	output_bit(bit);                           /* Output the bit.           */
+	output_bit(bit);                           
 	while (bits_to_follow > 0) {
-		output_bit(!bit);                      /* Output bits_to_follow     */
-		bits_to_follow -= 1;                   /* opposite bits. Set        */
-	}                                          /* bits_to_follow to zero.   */
+		output_bit(!bit);                      /* 后续缓冲流中的字符取反   */
+		bits_to_follow -= 1;                   
+	}                                        
 }
 
 
@@ -167,12 +169,12 @@ static void bit_plus_follow(int bit)
 
 //解码
 
-static code_value value;        /* Currently-seen code value                */
+static code_value value;                 
 
 void start_inputing_bits()
 {
-	bits_to_go = 0;                             /* Buffer starts out with   */
-	garbage_bits = 0;                           /* no bits in it.           */
+	bits_to_go = 0;                             
+	garbage_bits = 0;                          
 }
 
 
@@ -184,19 +186,17 @@ int input_bit()
 		buffer = code[decode_index];
 		decode_index++;
 
-		//    if (buffer==EOF) {
 		if (decode_index > code_index) {
-			garbage_bits += 1;                      /* Return arbitrary bits*/
-			if (garbage_bits > Code_value_bits - 2) {   /* after eof, but check */
-				fprintf(stderr, "Bad input file/n"); /* for too many such.   */
-				// exit(-1);
+			garbage_bits += 1;                      
+			if (garbage_bits > Code_value_bits - 2) {   
+				fprintf(stderr, "Bad input file/n"); 
 			}
 		}
 		bits_to_go = 8;
 	}
-	//从左到右取出二进制位，因为存的时候是从右到左
-	t = buffer & 1;                               /* Return the next bit from */
-	buffer >>= 1;                               /* the bottom of the byte. */
+	//从右到左取出二进制位
+	t = buffer & 1;                              
+	buffer >>= 1;                               
 	bits_to_go -= 1;
 	return t;
 }
@@ -204,69 +204,71 @@ int input_bit()
 void start_decoding()
 {
 	int i;
-	value = 0;                                  /* Input bits to fill the   */
-	for (i = 1; i <= Code_value_bits; i++) {      /* code value.              */
+	value = 0;                                 
+	for (i = 1; i <= Code_value_bits; i++) {      
 		value = 2 * value + input_bit();
 	}
 
 
-	low = 0;                                    /* Full code range.         */
+	low = 0;                                    
 	high = Top_value;
 }
 
 
 char decode_symbol(long cum_freq[])
 {
-	long range;                 /* Size of current code region              */
-	int cum;                    /* Cumulative frequency calculated          */
-	char symbol;                 /* Symbol decoded */
+	long range;                 
+	int cum;                    
+	char symbol;                
 	range = (long)(high - low) + 1;
-	cum = (((long)(value - low) + 1)*cum_freq[0] - 1) / range;    /* Find cum freq for value. */
+	cum = (((long)(value - low) + 1)*cum_freq[0] - 1) / range;    
 
-	for (symbol = 1; cum_freq[symbol] > cum; symbol++); /* Then find symbol. */
-	high = low + (range*cum_freq[symbol - 1]) / cum_freq[0] - 1;   /* Narrow the code region   *//* to that allotted to this */
+	for (symbol = 1; cum_freq[symbol] > cum; symbol++); 
+	high = low + (range*cum_freq[symbol - 1]) / cum_freq[0] - 1;  
 	low = low + (range*cum_freq[symbol]) / cum_freq[0];
 
-	for (;;) {                                  /* Loop to get rid of bits. */
+	for (;;) {                                  
 		if (high < Half) {
-			/* nothing */                       /* Expand low half.         */
+			/* nothing */                       /* 扩展低位        */
 		}
-		else if (low >= Half) {                   /* Expand high half.        */
+		else if (low >= Half) {                   /* 扩展高位       */
 			value -= Half;
-			low -= Half;                        /* Subtract offset to top. */
+			low -= Half;                       
 			high -= Half;
 		}
 		else if (low >= First_qtr && high < Third_qtr) {
 			value -= First_qtr;
-			low -= First_qtr;                   /* Subtract offset to middle*/
+			low -= First_qtr;                   //扩展中间
 			high -= First_qtr;
 		}
-		else break;                             /* Otherwise exit loop.     */
+		else break;                             /* 不需扩展 */
 		low = 2 * low;
-		high = 2 * high + 1;                        /* Scale up code range.     */
-		value = 2 * value + input_bit();            /* Move in next input blt. */
+		high = 2 * high + 1;                        
+		value = 2 * value + input_bit();           
 	}
 	return symbol;
 }
 
 BYTE DecodeRS[Max_code_length];
+int decode_length;
 
 void decode() {
-	int i = 0;
-	start_model();                              /* Set up other modules.    */
+	decode_index = 0;
+	decode_length = 0;
+	start_model();                              
 	start_inputing_bits();
 	start_decoding();
-	for (;;) {                                  /* Loop through characters. */
+	for (;;) {                                  
 		int ch; int symbol;
-		symbol = decode_symbol(cum_freq);       /* Decode next symbol.      */
-		if (symbol == EOF_symbol) break;          /* Exit loop if EOF symbol. */
+		symbol = decode_symbol(cum_freq);       
+		if (symbol == EOF_symbol) break;          
 		ch = symbol - 1;
-		DecodeRS[i] = ch;                       /* Write that character.    */
-		symbol = decode_symbol(cum_freq);       /* Decode next symbol.      */
+		DecodeRS[decode_length] = ch;                    
+		symbol = decode_symbol(cum_freq);       
 		if (symbol == EOF_symbol) break;
-		ch = symbol - 1;						/* Exit loop if EOF symbol. */
-		DecodeRS[i] |= ch << 4;
-		i++;
+		ch = symbol - 1;						
+		DecodeRS[decode_length] |= ch << 4;
+		decode_length++;
 	}
 }
 
@@ -276,23 +278,27 @@ void encode(BYTE * source, int size) {
 	auto pMWnd = dynamic_cast<CArithmeticCodingMFCDlg *>(pWnd);//由句柄得到对话框的对象指针
 	 
 	initACC();
-	pMWnd->ShowStatusMsg("初始化完成");
+	pMWnd->ShowStatusMsg(_T("初始化完成"));
 	CString msg;
 
 	scanFreq(source, size);
-	pMWnd->ShowStatusMsg("词频统计完成");
-	start_model();                             /* Set up other modules.     */
+	pMWnd->ShowStatusMsg(_T("词频统计完成"));
+	start_model();                            
 	start_outputing_bits();
 	start_encoding();
-	pMWnd->ShowStatusMsg("编码中...");
+	pMWnd->ShowStatusMsg(_T("编码中..."));
 	for (int i = 0; i < size; i++) {
 		BYTE b = *(source + i);
 		encode_symbol(char_to_index[(b & 0x0f)], cum_freq);
 		encode_symbol(char_to_index[b >> 4], cum_freq);
+		if (i % 10000 == 0) {
+			msg.Format(_T("编码中 %d / %d"), i, size);
+			pMWnd->ShowStatusMsg(msg);
+		}
 	}
 	//将EOF编码进去，作为终止符
 	encode_symbol(EOF_symbol, cum_freq);
-	done_encoding();                           /* Send the last few bits.   */
+	done_encoding();                           
 	done_outputing_bits();
-	pMWnd->ShowStatusMsg("算术编码完成");
+	pMWnd->ShowStatusMsg(_T("算术编码完成"));
 }

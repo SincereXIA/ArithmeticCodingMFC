@@ -12,6 +12,7 @@
 #include <sstream>
 #include <iomanip>
 #include <fstream>
+#include <bitset>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -83,6 +84,7 @@ BEGIN_MESSAGE_MAP(CArithmeticCodingMFCDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_InputFile, &CArithmeticCodingMFCDlg::OnBnClickedButtonInputfile)
 	ON_BN_CLICKED(IDC_BUTTON_Compress, &CArithmeticCodingMFCDlg::OnBnClickedButtonCompress)
 	ON_BN_CLICKED(IDC_BUTTON2, &CArithmeticCodingMFCDlg::OnBnClickedButton2)
+	ON_STN_CLICKED(IDC_Freq, &CArithmeticCodingMFCDlg::OnStnClickedFreq)
 END_MESSAGE_MAP()
 
 
@@ -190,6 +192,33 @@ CString byte_to_hex(const char* str, int len) //transfer string to hex-string
 	return cstr;
 }
 
+double byte_to_double(const char* str, int len) {
+
+	len = len > 50 ? 50 : len;
+	double res = 0.0;
+	int p = 1;
+	for (int i = 0; i < len; i++)
+	{
+		if (str[i] & 0b00000001) res += pow(0.5, p);
+		p++;
+		if (str[i] & 0b00000010) res += pow(0.5, p);
+		p++;
+		if (str[i] & 0b00000100) res += pow(0.5, p);
+		p++;
+		if (str[i] & 0b00001000) res += pow(0.5, p);
+		p++;
+		if (str[i] & 0b00010000) res += pow(0.5, p);
+		p++;
+		if (str[i] & 0b00100000) res += pow(0.5, p);
+		p++;
+		if (str[i] & 0b01000000) res += pow(0.5, p);
+		p++;
+		if (str[i] & 0b10000000) res += pow(0.5, p);
+		p++;
+	}
+	return res;
+}
+
 
 
 void CArithmeticCodingMFCDlg::OnBnClickedencodebutton()
@@ -198,16 +227,31 @@ void CArithmeticCodingMFCDlg::OnBnClickedencodebutton()
 	UpdateData(TRUE);
 	
 	CString text;
+	USES_CONVERSION;
 	GetDlgItemText(IDC_STRInput, text);
 	int strLength = text.GetLength()+1;
 	char *str = new char[strLength];
 	strncpy_s(str, strLength, text, strLength);
 	encode((BYTE *)str, strLength);
+
+	// 频谱输出
+	CString freqstr("");
+	CString tmp;
+	for (int i = 0; i < No_of_symbols; i++) {
+		tmp.Format(_T("%x:\t%d\n"), i - 1, freq[i]);
+		freqstr += tmp;
+	}
+	SetDlgItemText(IDC_Freq, freqstr);
+
 	char *destr = new char[strLength];
 	CString show_code = byte_to_hex(code, code_index);
 	//AfxMessageBox(show_code);
 	CString msg;
 	msg.Format(_T("原始长度：%d\n编码长度：%d"), strLength, code_index);
+	AfxMessageBox(msg);
+	double num = byte_to_double(code, code_index);
+	msg.Format(_T("算术压缩结果:\n%.30lf"), num);
+
 	AfxMessageBox(msg);
 	
 	SetDlgItemText(IDC_STRoutput, show_code);
@@ -217,8 +261,9 @@ void CArithmeticCodingMFCDlg::OnBnClickedencodebutton()
 void CArithmeticCodingMFCDlg::OnBnClickeddecodeButton()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	ShowStatusMsg(_T("解码中..."));
 	decode();
-	ShowStatusMsg("解码完成！");
+	ShowStatusMsg(_T("解码完成！"));
 	CString res = CString((char *)DecodeRS);
 	SetDlgItemText(IDC_STRoutput, res);
 }
@@ -231,11 +276,11 @@ void CArithmeticCodingMFCDlg::ShowStatusMsg(CString msg) {
 void CArithmeticCodingMFCDlg::OnBnClickedButtonInputfile()
 {
 	BOOL isOpen = TRUE;		//是否打开(否则为保存)
-	CString defaultDir = "";	//默认打开的文件路径
-	CString fileName = "";			//默认打开的文件名
-	CString filter = "";	//文件过虑的类型
+	CString defaultDir = _T("");	//默认打开的文件路径
+	CString fileName = _T("");			//默认打开的文件名
+	CString filter = _T("");	//文件过虑的类型
 	CFileDialog openFileDlg(isOpen, defaultDir, fileName, OFN_HIDEREADONLY | OFN_READONLY, filter, NULL);
-	openFileDlg.GetOFN().lpstrInitialDir = "E:\\FileTest\\test.doc";
+	openFileDlg.GetOFN().lpstrInitialDir = _T("E:\\FileTest\\test.doc");
 	INT_PTR result = openFileDlg.DoModal();
 	CString filePath = defaultDir;
 	if (result == IDOK) {
@@ -246,38 +291,140 @@ void CArithmeticCodingMFCDlg::OnBnClickedButtonInputfile()
 }
 
 
+CString GetFileType(CString filename)
+{
+	CString type;
+	filename.MakeReverse();//颠倒字符串顺序
+	int pos = filename.Find('.');//找到小数点的位置
+	type = filename.Left(pos);//获取小数点左边的字符串
+	type.MakeReverse();//颠倒字符串顺序
+	return type;
+}
+
+
 void CArithmeticCodingMFCDlg::OnBnClickedButtonCompress()
 {
+	// 点击压缩\解压按钮
+	// 刷新选定的文件信息
 	UpdateData(TRUE);
 	if (inputFilePath == "") return;
+	// 判断是否为待解压文件
+	if (GetFileType(inputFilePath) == "acc") {
+		ShowStatusMsg(_T("ACC 文件"));
+		deCompress(); // 执行解压流程
+		return;
+	}
+	/**
+	*	执行压缩流程
+	*/
 	char * buffer;
+	// 二进制方式打开
 	std::ifstream inputfile(inputFilePath, std::ios::binary|std::ios::ate);
-	long size = inputfile.tellg();
-	inputfile.seekg(0, std::ios::beg);
-	buffer = new char[size];
+	auto size = inputfile.tellg();  // 获取文件大小
+	inputfile.seekg(0, std::ios::beg);  // 返回文件头
+
+	buffer = new char[size];	// 建立缓冲区
 	inputfile.read(buffer, size);
+	/*
+		压缩后的编码存入 code[]
+	*/
 	encode((BYTE *)buffer, size);
+
+	// 频谱输出
+	CString freqstr("");
+	CString tmp;
+	for (int i = 1; i < No_of_symbols; i++) {
+		tmp.Format(_T("%x:\t%d\n"),i-1, freq[i]);
+		freqstr += tmp;
+	}
+	SetDlgItemText(IDC_Freq, freqstr);
+
+	// 压缩后的二进制输出
 	CString show_code = byte_to_hex(code, code_index);
 	SetDlgItemText(IDC_STRoutput, show_code);
+	CString msg;
+	msg.Format(_T("编码长度\t%ld\n原始长度\t%ld\n"),code_index, size);
+	AfxMessageBox(msg);
+
+	// 将压缩后的数据存入文件
+	if (outputFilePath == "") return;
+	std::ofstream outputfile(outputFilePath, std::ios::binary );
+	for (int i = 0; i < No_of_symbols; i++) {  // 存入频谱字典 解压用
+		outputfile << freq[i] << " ";
+	}
+	outputfile.close();
+	outputfile.open(outputFilePath, std::ios::binary | std::ios::app);
+	// 写入压缩数据
+	outputfile.write(code, code_index);
+	outputfile.close();
+}
+
+void CArithmeticCodingMFCDlg::deCompress() {
+	if (inputFilePath == "") return;
+	
+	std::ifstream inputfile(inputFilePath ,std::ios::binary | std::ios::ate);
+	long filesize = inputfile.tellg();
+	
+	inputfile.seekg(0, std::ios::beg);
+	auto bstartsize = inputfile.tellg();
+	for (int i = 0; i < No_of_symbols; i++) {
+		inputfile >> freq[i];
+		bstartsize = inputfile.tellg();
+	}
+	bstartsize = inputfile.tellg();
+
+	CString freqstr("");
+	CString tmp;
+	for (int i = 0; i < No_of_symbols; i++) {
+		tmp.Format(_T("%x:\t%d\n"), i - 1, freq[i]);
+		freqstr += tmp;
+	}
+	SetDlgItemText(IDC_Freq, freqstr);
+
+	//inputfile.seekg(2, std::ios::cur);
+	inputfile.get();
+
+	bstartsize = inputfile.tellg();
+	long size = filesize - bstartsize;
+	int i = 0;
+	inputfile.close();
+
+	inputfile.open(inputFilePath, std::ios::binary);
+	inputfile.seekg(bstartsize, std::ios::beg);
+	inputfile.read(code, size);
+	bstartsize = inputfile.tellg();
+	inputfile.close();
+	CString show_code = byte_to_hex(code, size);
+	SetDlgItemText(IDC_STRoutput, show_code);
+	/*
+	while (1) {
+		auto ch = inputfile.get();
+		if (ch == -1) break;
+		code[i++] = ch;
+	}
+	*/
+
+
+	start_model();
+	decode();
+	ShowStatusMsg(_T("解码完成！"));
+
 
 	if (outputFilePath == "") return;
 	std::ofstream outputfile(outputFilePath, std::ios::binary);
-	outputfile.write(code, code_index);
+	outputfile.write((const char *)DecodeRS, decode_length);
 	outputfile.close();
-	CString msg;
-	msg.Format(_T("原始长度：%d\n编码长度：%d"), size, code_index);
-	AfxMessageBox(msg);
 }
 
 
 void CArithmeticCodingMFCDlg::OnBnClickedButton2()
 {
 	BOOL isOpen = FALSE;		//是否打开(否则为保存)
-	CString defaultDir = inputFilePath;	//默认打开的文件路径
-	CString fileName = "";			//默认打开的文件名
-	CString filter = "";	//文件过虑的类型
+	CString defaultDir = _T("");	//默认打开的文件路径
+	CString fileName = _T("file.acc");			//默认打开的文件名
+	CString filter = _T("算术压缩文件 (*.acc)||其他文件 (*.*)");	//文件过虑的类型
 	CFileDialog openFileDlg(isOpen, defaultDir, fileName, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, filter, NULL);
-	openFileDlg.GetOFN().lpstrInitialDir = "E:\\FileTest\\test.doc";
+	openFileDlg.GetOFN().lpstrInitialDir = _T("E:\\FileTest\\test.doc");
 	INT_PTR result = openFileDlg.DoModal();
 	CString filePath = defaultDir + "\\" + fileName;
 	if (result == IDOK) {
@@ -286,4 +433,10 @@ void CArithmeticCodingMFCDlg::OnBnClickedButton2()
 	CWnd::SetDlgItemText(IDC_EDIT_OutputFile, filePath);
 	outputFilePath = filePath;
 
+}
+
+
+void CArithmeticCodingMFCDlg::OnStnClickedFreq()
+{
+	// TODO: 在此添加控件通知处理程序代码
 }
